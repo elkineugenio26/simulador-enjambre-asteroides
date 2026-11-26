@@ -22,26 +22,34 @@ def repulsion_from(e: Entity, o: Obstacle) -> Tuple[float, float]:
 
 
 def step_entity(e: Entity, dt, width, height, target, obstacles) -> Entity:
-    """Devuelve una NUEVA entidad. Es la unidad de trabajo que se paraleliza."""
+    """Devuelve una NUEVA entidad. Es la unidad de trabajo que se paraleliza.
+
+    Cada nombre se asigna UNA sola vez (asignacion unica): no se reasigna ninguna
+    variable local ni se muta ningun objeto. Solo se calculan valores nuevos.
+    """
     forces = tuple(repulsion_from(e, o) for o in obstacles)
     fx = sum(f[0] for f in forces) + (target[0] - e.x) * ATTRACTION
     fy = sum(f[1] for f in forces) + (target[1] - e.y) * ATTRACTION
 
-    vx = (e.vx + fx * dt) * DAMPING
-    vy = (e.vy + fy * dt) * DAMPING
-    speed = sqrt(vx * vx + vy * vy) + 1e-9
+    # velocidad con amortiguamiento
+    vx_free = (e.vx + fx * dt) * DAMPING
+    vy_free = (e.vy + fy * dt) * DAMPING
+    # limite de velocidad
+    speed = sqrt(vx_free * vx_free + vy_free * vy_free) + 1e-9
     scale = min(1.0, MAX_SPEED / speed)
-    vx, vy = vx * scale, vy * scale
+    vx_cap, vy_cap = vx_free * scale, vy_free * scale
 
-    nx, ny = e.x + vx * dt, e.y + vy * dt
-    vx = -vx if (nx < 0 or nx > width) else vx
-    vy = -vy if (ny < 0 or ny > height) else vy
+    # posicion tentativa y rebote en los bordes
+    nx, ny = e.x + vx_cap * dt, e.y + vy_cap * dt
+    vx_final = -vx_cap if (nx < 0 or nx > width) else vx_cap
+    vy_final = -vy_cap if (ny < 0 or ny > height) else vy_cap
+
     return replace(
         e,
         x=min(max(nx, 0.0), width),
         y=min(max(ny, 0.0), height),
-        vx=vx,
-        vy=vy,
+        vx=vx_final,
+        vy=vy_final,
     )
 
 
