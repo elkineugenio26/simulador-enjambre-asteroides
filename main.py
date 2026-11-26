@@ -23,6 +23,7 @@ def main():
 
     state = make_initial_state(1000, width=WIDTH, height=HEIGHT)
     parallel_mode = True
+    paused = False
 
     # El Pool se crea UNA sola vez (crearlo por frame seria carisimo).
     with mp.Pool(processes=n_workers) as pool:
@@ -36,20 +37,23 @@ def main():
                 elif ev.type == pygame.KEYDOWN:
                     if ev.key == pygame.K_SPACE:
                         parallel_mode = not parallel_mode
+                    elif ev.key == pygame.K_p:
+                        paused = not paused
                     elif ev.key in SIZES:
                         state = make_initial_state(SIZES[ev.key], width=WIDTH, height=HEIGHT)
 
             events = Events(target=tuple(float(v) for v in pygame.mouse.get_pos()))
 
-            # Nuevo estado en cada frame; el anterior nunca se modifica.
+            # En pausa NO se llama a update: el estado se queda igual.
+            # Fuera de pausa se crea un estado nuevo; el anterior nunca se modifica.
             state = (
-                update_parallel(state, events, dt, pool, n_workers)
-                if parallel_mode
+                state if paused
+                else update_parallel(state, events, dt, pool, n_workers) if parallel_mode
                 else update_sequential(state, events, dt)
             )
 
             render(screen, font, state, clock.get_fps(),
-                   "PARALELO" if parallel_mode else "SECUENCIAL", n_workers)
+                   "PARALELO" if parallel_mode else "SECUENCIAL", n_workers, paused)
 
     pygame.quit()
 
